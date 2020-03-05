@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w"
+    "watch": "tsc -w",
+    "gen:diagMap": "node scripts/genDiagnosticsMap.js"
   },
   "devDependencies": {
     "@types/commander": "^2.12.2",
