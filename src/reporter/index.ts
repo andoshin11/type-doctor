@@ -34,6 +34,7 @@ export class Reporter {
       const hasLocation = typeof err.start === 'number' && typeof err.length === 'number'
       if (hasLocation) {
         this._reportErrorWithLoc(relativeFileName, err)
+        // console.log(err)
       } else {
         console.log(err)
       }
