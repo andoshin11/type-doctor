@@ -1,5 +1,6 @@
 import * as ts from 'typescript'
 
+export * from './codeFix'
 export * from './symptoms'
 
 export type Location = { line: number; character: number }

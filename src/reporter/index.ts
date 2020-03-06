@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import * as chalk from 'chalk'
 import { pos2location, hasDiagRange } from '../utils'
-import { DiagnosticWithRange } from '../types'
+import { DiagnosticWithRange, CodeFixAction } from '../types'
 import { lineMark, pad, lineMarkForUnderline } from './helper'
 
 const toRelativePath = (str: string) => str.replace(process.cwd() + '/', '')
@@ -11,7 +11,7 @@ export class Reporter {
     console.log(msg)
   }
 
-  reportDiagnosticsSummary(diagnostics: ts.Diagnostic[], codeFixes: readonly ts.CodeFixAction[]) {
+  reportDiagnosticsSummary(diagnostics: ts.Diagnostic[], codeFixes: CodeFixAction[]) {
     let outputs: string[] = []
     const autoFixable = codeFixes.length
     const errors = diagnostics.filter(d => d.category === ts.DiagnosticCategory.Error).length
