@@ -1,5 +1,5 @@
 import * as ts from 'typescript'
-import { getSymptomType } from './symptom'
+import { code2symptom } from '../utils'
 
 export class Analyzer {
   analyzeDiagnostics(diagnostics: ts.Diagnostic[]) {
@@ -7,8 +7,9 @@ export class Analyzer {
   }
 
   analyzeDiagnostic(diagnostic: ts.Diagnostic) {
-    const symptomType = getSymptomType(diagnostic)
-    console.log('symptomType')
-    console.log(symptomType)
+    console.log(diagnostic.code)
+    const symptom = code2symptom(diagnostic.code)
+
+    console.log(symptom)
   }
 }
