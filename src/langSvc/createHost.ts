@@ -1,15 +1,26 @@
 import * as ts from 'typescript'
 import * as fs from 'fs'
+import { FileEntry } from '../types'
 
-export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOptions): ts.LanguageServiceHost => {
+export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOptions, fileEntry: FileEntry): ts.LanguageServiceHost => {
+  const getCurrentVersion = (fileName: string) => fileEntry.has(fileName) ? fileEntry.get(fileName)!.version : 0
+
   return {
     getScriptFileNames: () => fileNames,
-    getScriptVersion: _ => '0',
+    getScriptVersion: fileName => getCurrentVersion(fileName) + '',
     getScriptSnapshot: fileName => {
       if (!fs.existsSync(fileName)) {
         return undefined
       }
-      return ts.ScriptSnapshot.fromString(fs.readFileSync(fileName).toString())
+
+      if (fileEntry.has(fileName)) {
+        return fileEntry.get(fileName)!.scriptSnapshot
+      } else {
+        const content = fs.readFileSync(fileName).toString()
+        const scriptSnapshot = ts.ScriptSnapshot.fromString(content)
+        fileEntry.set(fileName, { version: 0, scriptSnapshot })
+        return scriptSnapshot
+      }
     },
     getCurrentDirectory: () => process.cwd(),
     getCompilationSettings: () => compilerOptions,
