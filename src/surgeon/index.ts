@@ -24,7 +24,12 @@ export class Surgeon {
       return acc
     }, {} as Record<string, CodeFixAction>)
 
-    return Object.values(byFile).map(this.applyCodeFixAction.bind(this))
+    const updatedSourceFiles = Object.values(byFile).map(this.applyCodeFixAction.bind(this))
+
+    return {
+      executed: Object.values(byFile),
+      updatedSourceFiles
+    }
   }
 
   applyCodeFixAction(action: CodeFixAction) {
