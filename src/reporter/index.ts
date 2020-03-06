@@ -1,52 +1,46 @@
 import * as ts from 'typescript'
 import * as chalk from 'chalk'
-import { pos2location } from '../utils'
+import { pos2location, hasDiagRange } from '../utils'
+import { DiagnosticWithRange } from '../types'
+import { lineMark, pad, lineMarkForUnderline } from './helper'
 
 const toRelativePath = (str: string) => str.replace(process.cwd() + '/', '')
-
-const pad = (letter: string, length: number) => {
-  const outs: string[] = [];
-  for (let i = 0; i < length; i++) {
-    outs.push(letter);
-  }
-  return outs.join('');
-}
-
-const lineMark = (line: number, width: number) => {
-  const strLine = line + 1 + '';
-  return chalk.inverse(pad(' ', width - strLine.length) + strLine) + ' '
-};
-
-const lineMarkForUnderline = (width: number) => {
-  return chalk.inverse(pad(' ', width)) + ' ';
-};
 
 export class Reporter {
   report(msg: any) {
     console.log(msg)
   }
 
-  reportError(fileName: string, errors: ts.Diagnostic[]) {
-    if (!errors.length) return
-    const relativeFileName = toRelativePath(fileName)
+  reportDiagnosticsSummary(diagnostics: ts.Diagnostic[], codeFixes: readonly ts.CodeFixAction[]) {
+    let outputs: string[] = []
+    const autoFixable = codeFixes.length
+    const errors = diagnostics.filter(d => d.category === ts.DiagnosticCategory.Error).length
+    const warnings = diagnostics.filter(d => d.category === ts.DiagnosticCategory.Warning).length
 
-    errors.forEach(err => {
-      const hasLocation = typeof err.start === 'number' && typeof err.length === 'number'
-      if (hasLocation) {
-        this._reportErrorWithLoc(relativeFileName, err)
-        // console.log(err)
+    if (!!errors) outputs.push(`Found ${chalk.red(errors)} errors`)
+    if (!!warnings) outputs.push(`Found ${chalk.yellow(warnings)} warnings`)
+    if (!!autoFixable) outputs.push(`Found ${chalk.blue(autoFixable)} auto fixable items`)
+
+    const output = outputs.join('\n')
+    this.report(output)
+  }
+
+  reportDiagnostics(diagnostics: ts.Diagnostic[]) {
+    diagnostics.forEach(d => {
+      if (hasDiagRange(d)) {
+        this._reportDiagnosticWithRange(d)
       } else {
-        console.log(err)
+        this.report(d)
       }
     })
   }
 
-  _reportErrorWithLoc(relativeFileName: string, error: ts.Diagnostic) {
-    const { start, length, file, messageText } = error
-    if (!start || !length) return
+  _reportDiagnosticWithRange(diagnostic: DiagnosticWithRange) {
+    const { start, length, file, messageText } = diagnostic
     const content = file && file.getFullText()
     if (!content) return
 
+    const relativeFileName = toRelativePath(file!.fileName)
     const startLC = pos2location(content, start)
     const endLC = pos2location(content, start + length)
     const fileIndicator = `${relativeFileName}:${startLC.line + 1}:${startLC.character + 1}`
@@ -89,24 +83,5 @@ export class Reporter {
     outputs.push('');
 
     this.report(outputs.join('\n'))
-  }
-
-  reportErrors(errors: { [fileName: string]: ts.Diagnostic[] }) {
-    // this._reportErrorSummary(errors)
-    Object.entries(errors).forEach(([key, val]) => {
-      this.reportError(key, val)
-    })
-  }
-
-  _reportErrorSummary(errors: ts.Diagnostic[]) {
-    const summary: { [category in ts.DiagnosticCategory]: number } = {
-      [ts.DiagnosticCategory.Warning]: 0,
-      [ts.DiagnosticCategory.Error]: 0,
-      [ts.DiagnosticCategory.Suggestion]: 0,
-      [ts.DiagnosticCategory.Message]: 0,
-    }
-
-    errors.forEach(err => summary[err.category]++)
-
   }
 }

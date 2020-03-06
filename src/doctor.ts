@@ -4,6 +4,7 @@ import * as path from 'path'
 import { createHost, createService } from './langSvc'
 import { Reporter } from './reporter'
 import { Analyzer } from './analyzer'
+import { flatten, nonNullable, mutable } from './utils'
 
 export class Doctor {
   private service: ts.LanguageService
@@ -27,18 +28,28 @@ export class Doctor {
     return new Doctor(parsed.fileNames, parsed.options)
   }
 
-  getSemanticDiagnostics(): { [fileName: string]: ts.Diagnostic[] } {
+  getSemanticDiagnostics() {
     const { fileNames, service } = this
     const result = fileNames.reduce((acc, ac) => {
-      acc[ac] = service.getSemanticDiagnostics(ac)
+      acc = [...acc, ...service.getSemanticDiagnostics(ac)]
       return acc
-    }, {} as { [fileName: string]: ts.Diagnostic[] })
+    }, [] as ts.Diagnostic[])
     return result
+  }
+
+  getCodeFixes(diagnostic: ts.Diagnostic) {
+    const { start, length, file, code } = diagnostic
+    if (typeof start !== 'number' || !length || !file) return undefined
+    return this.service.getCodeFixesAtPosition(file.fileName, start, start + length, [code], {}, {})
   }
 
   runDiagnostics() {
     const diagnostics = this.getSemanticDiagnostics()
-    this.reporter.reportErrors(diagnostics)
+    const codeFixesList = diagnostics.map(this.getCodeFixes.bind(this)).filter(nonNullable).map(mutable)
+    const codeFixes = flatten(codeFixesList)
+
+    this.reporter.reportDiagnostics(diagnostics)
+    this.reporter.reportDiagnosticsSummary(diagnostics, codeFixes)
     return diagnostics
   }
 
