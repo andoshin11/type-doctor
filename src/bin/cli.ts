@@ -17,10 +17,11 @@ commander
         throw new Error(`could not find tsconfig.json at: ${currentDir}`)
       }
 
-      const doctor = Doctor.fromConfigFile(configPath)
+      const doctor = Doctor.fromConfigFile(configPath, true)
       // const diagnostics = doctor.getSemanticDiagnostics()
-      const diagnostics = doctor.runDiagnostics()
-      doctor.analyzeDiagnostics(flatten(Object.values(diagnostics)))
+      const { codeFixes } = doctor.runDiagnostics()
+      doctor.applyCodeFixActions(codeFixes)
+      // doctor.analyzeDiagnostics(flatten(Object.values(diagnostics)))
     
     } catch (e) {
       throw e

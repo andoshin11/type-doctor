@@ -20,3 +20,5 @@ export const hasDiagRange = (diagnostic: ts.Diagnostic): diagnostic is Diagnosti
   const { start, length } = diagnostic
   return typeof start === 'number' && typeof length === 'number'
 }
+
+export const toRelativePath = (str: string) => str.replace(process.cwd() + '/', '')

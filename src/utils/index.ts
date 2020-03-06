@@ -1,5 +1,6 @@
 export * from './code2symptoms'
 export * from './diagnostic'
+export * from './printer'
 
 export function nonNullable<T>(arg: T): arg is NonNullable<T> {
   return arg !== undefined || arg !== null

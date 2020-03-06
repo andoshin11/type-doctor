@@ -1,10 +1,8 @@
 import * as ts from 'typescript'
 import * as chalk from 'chalk'
-import { pos2location, hasDiagRange } from '../utils'
+import { pos2location, hasDiagRange, toRelativePath } from '../utils'
 import { DiagnosticWithRange, CodeFixAction } from '../types'
 import { lineMark, pad, lineMarkForUnderline } from './helper'
-
-const toRelativePath = (str: string) => str.replace(process.cwd() + '/', '')
 
 export class Reporter {
   report(msg: any) {
