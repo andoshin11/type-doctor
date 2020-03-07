@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import * as chalk from 'chalk'
 import { pos2location, hasDiagRange, toRelativePath } from '../utils'
-import { DiagnosticWithRange, CodeFixAction } from '../types'
+import { DiagnosticWithRange } from '../types'
 import { lineMark, pad, lineMarkForUnderline } from './helper'
 
 export class Reporter {
@@ -9,15 +9,18 @@ export class Reporter {
     console.log(msg)
   }
 
-  reportDiagnosticsSummary(diagnostics: ts.Diagnostic[], codeFixes: CodeFixAction[]) {
+  reportDiagnosticsSummary(diagnostics: ts.Diagnostic[]) {
+    if (!diagnostics.length) {
+      this.report('✨  No type error found')
+      return
+    }
+
     let outputs: string[] = []
-    const autoFixable = codeFixes.length
     const errors = diagnostics.filter(d => d.category === ts.DiagnosticCategory.Error).length
     const warnings = diagnostics.filter(d => d.category === ts.DiagnosticCategory.Warning).length
 
     if (!!errors) outputs.push(`Found ${chalk.red(errors)} errors`)
     if (!!warnings) outputs.push(`Found ${chalk.yellow(warnings)} warnings`)
-    if (!!autoFixable) outputs.push(`Found ${chalk.blue(autoFixable)} auto fixable items`)
 
     const output = outputs.join('\n')
     this.report(output)
