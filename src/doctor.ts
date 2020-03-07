@@ -6,18 +6,18 @@ import { createHost, createService } from './langSvc'
 import { Reporter } from './reporter'
 import { Analyzer } from './analyzer'
 import { Surgeon } from './surgeon'
-import { flatten, hasDiagRange } from './utils'
+import { hasDiagRange, nonNullable, toCodeFixActions } from './utils'
 import { CodeFixAction, FileEntry } from './types'
 
 export class Doctor {
   private service: ts.LanguageService
-  private reporter: Reporter
+  public reporter: Reporter
   private analyzer: Analyzer
   private surgeon: Surgeon
 
   scriptVersions: FileEntry = new Map()
 
-  constructor(private fileNames: string[], private compilerOptions: ts.CompilerOptions, private debug: boolean = false) {
+  constructor(public fileNames: string[], private compilerOptions: ts.CompilerOptions, private debug: boolean = false) {
     const host = createHost(fileNames, compilerOptions, this.scriptVersions)
     this.service = createService(host)
     this.reporter = new Reporter()
@@ -45,49 +45,30 @@ export class Doctor {
     return result
   }
 
-  getCodeFixes(diagnostic: ts.Diagnostic): CodeFixAction[] {
-    const { file, code } = diagnostic
-    if (!hasDiagRange(diagnostic) || !file) return []
+  getAutoCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
+    const service = this.service
+    const _diagnostics = diagnostics.filter(hasDiagRange)
+    const codeFixesList = _diagnostics.map(d => {
+      const { file, start, length, code } = d
+      if (!file) return undefined
+      return service.getCodeFixesAtPosition(file.fileName, start, start + length, [code], {}, {})
+    }).filter(nonNullable)
+    const codeFixes = codeFixesList.reduce((acc, ac) => {
+      acc = [...acc, ...ac,]
+      return acc
+    }, [] as readonly ts.CodeFixAction[])
 
-    const codeFixes = this.service.getCodeFixesAtPosition(file.fileName, diagnostic.start, diagnostic.start + diagnostic.length, [code], {}, {})
-
-    /**
-     * Notice:
-     *
-     * type-doctor accepts only one code change at a time for a file
-     * due to the character position dependent architecture.
-     */
-    function transform(codeFixes: ts.CodeFixAction): CodeFixAction {
-      const { fixName, description, changes } = codeFixes
-      const representChange = changes[0].textChanges[0]
-
-      return {
-        fileName: file!.fileName,
-        fixName,
-        description,
-        textChange: {
-          span: representChange.span,
-          newText: representChange.newText
-        }
-      }
-    }
-
-    return [...codeFixes].map(transform)
+    return toCodeFixActions(codeFixes)
   }
 
   runDiagnostics() {
     const diagnostics = this.getSemanticDiagnostics()
-    const codeFixesList = diagnostics.map(this.getCodeFixes.bind(this))
-    const codeFixes = flatten(codeFixesList)
 
     this.reporter.reportDiagnostics(diagnostics)
-    this.reporter.reportDiagnosticsSummary(diagnostics, codeFixes)
-
-    // console.log(JSON.stringify(codeFixes, null, '\t'))
+    this.reporter.reportDiagnosticsSummary(diagnostics)
 
     return {
-      diagnostics,
-      codeFixes
+      diagnostics
     }
   }
 
@@ -104,47 +85,34 @@ export class Doctor {
     // this.analyzer.analyzeDiagnostics(diagnostics)
   }
 
-  applyCodeFixActions(actions: CodeFixAction[], silent: boolean = false) {
-    const { updatedSourceFiles } = this.surgeon.applyCodeFixActions(actions)
-    if (!silent) {
-      const unit = updatedSourceFiles.length > 1 ? 'files' : 'file'
-      this.reporter.report(`✨ Fixed ${chalk.blue(updatedSourceFiles.length)} ${unit} ✨`)
-    }
-
-    if (this.debug) {
-      updatedSourceFiles.forEach(s => {
-        console.log(s.getFullText())
-      })
-    } else {
-      // overrite file
-    }
-  }
-
   /**
    * Warning: cpu heavy
    *
-   * apply all code fixes until no item's available
+   * apply all auto code fixes until no item's available
    */
-  applyAllCodeFixActions() {
+  applyAutoCodeFixActions() {
     const getSemanticDiagnostics = this.getSemanticDiagnostics.bind(this)
-    const getCodeFixes = this.getCodeFixes.bind(this)
+    const getAutoCodeFixes = this.getAutoCodeFixes.bind(this)
     const surgeon = this.surgeon
     const updateVirtualFile = this.updateVirtualFile.bind(this)
-    const writeFile = this.writeFile.bind(this)
 
     function run() {
       const diagnostics = getSemanticDiagnostics()
-      const codeFixes = flatten(diagnostics.map(getCodeFixes))
-      if (!codeFixes.length) return
-      const { updatedSourceFiles } = surgeon.applyCodeFixActions(codeFixes)
+      const autoCodeFixes = getAutoCodeFixes(diagnostics)
+      if (!autoCodeFixes.length) return
+      const { updatedSourceFiles } = surgeon.applyCodeFixActions(autoCodeFixes)
       updatedSourceFiles.forEach(updateVirtualFile)
       run()
     }
 
     run()
+    this.emitUpdatedFiles()
+  }
+
+  emitUpdatedFiles() {
+    const { scriptVersions, writeFile } = this
 
     // check updated files
-    const scriptVersions = this.scriptVersions
     const updatedFiles = Array.from(scriptVersions.keys())
       .filter(key => scriptVersions.get(key)!.version >= 1)
 
@@ -155,6 +123,7 @@ export class Doctor {
       writeFile(fileName, content)
     })
 
+    // report
     const unit = updatedFiles.length > 1 ? 'files' : 'file'
     this.reporter.report(`✨ Fixed ${chalk.blue(updatedFiles.length)} ${unit} ✨`)
   }
