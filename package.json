@@ -10,12 +10,15 @@
     "gen:diagMap": "node scripts/genDiagnosticsMap.js"
   },
   "devDependencies": {
+    "@types/clui": "^0.3.0",
     "@types/commander": "^2.12.2",
     "@types/node": "^13.7.7",
     "typescript": "^3.8.3"
   },
   "dependencies": {
     "chalk": "^3.0.0",
-    "commander": "^4.1.1"
+    "clui": "^0.3.6",
+    "commander": "^4.1.1",
+    "enquirer": "^2.3.4"
   }
 }
