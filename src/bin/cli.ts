@@ -2,7 +2,16 @@ import * as commander from 'commander'
 import * as path from 'path'
 import * as fs from 'fs'
 import { Doctor } from '../doctor'
-import { flatten } from '../utils'
+import { exec as run } from './commands/run'
+
+/**
+ * Idea:
+ *
+ * - https://qiita.com/toshi-toma/items/ea76b8894e7771d47e10
+ * - https://github.com/patorjk/figlet.js
+ * - https://github.com/sindresorhus/ora
+ * - https://github.com/bahamas10/node-clear
+ */
 
 const pkg = require('../../package.json')
 
@@ -18,11 +27,8 @@ commander
       }
 
       const doctor = Doctor.fromConfigFile(configPath, true)
-      // const diagnostics = doctor.getSemanticDiagnostics()
-      const { codeFixes } = doctor.runDiagnostics()
-      doctor.applyCodeFixActions(codeFixes)
-      // doctor.analyzeDiagnostics(flatten(Object.values(diagnostics)))
-    
+      await run(doctor)
+
     } catch (e) {
       throw e
     }
