@@ -1,9 +1,9 @@
-import * as ts from 'typescript'
 import { prompt } from 'enquirer'
 import { Doctor } from '../../../doctor'
+import { CodeFixAction } from '../../../types'
 
-const autoFix = async (doctor: Doctor, diagnostics: ts.Diagnostic[]) => {
-  const autoCodeFixes = doctor.getAutoCodeFixes(diagnostics)
+const autoFix = async (doctor: Doctor, autoCodeFixes: CodeFixAction[]) => {
+  if (!autoCodeFixes.length) return false
 
   const { confirm } = await prompt<{ confirm: boolean }>({
     type: 'confirm',
@@ -14,6 +14,8 @@ const autoFix = async (doctor: Doctor, diagnostics: ts.Diagnostic[]) => {
   if (confirm) {
     doctor.applyAutoCodeFixActions()
   }
+
+  return confirm
 }
 
 export default autoFix
