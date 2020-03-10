@@ -2,7 +2,7 @@ import * as ts from 'typescript'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as chalk from 'chalk'
-import { createHost, createService } from './langSvc'
+import { createHost, createService, getTypesDts } from './langSvc'
 import { Reporter } from './reporter'
 import { Analyzer } from './analyzer'
 import { Surgeon } from './surgeon'
@@ -32,12 +32,15 @@ export class Doctor {
         ts.sys,
         path.dirname(configPath)
     );
-    return new Doctor(parsed.fileNames, parsed.options, debug)
+    const rootFileNames = [
+      // ...getTypesDts(parsed.options), <- may cause crash
+      ...parsed.fileNames
+    ]
+    return new Doctor(rootFileNames, parsed.options, debug)
   }
 
   getSemanticDiagnostics() {
     const { fileNames, service } = this
-
     const result = fileNames.reduce((acc, ac) => {
       acc = [...acc, ...service.getSemanticDiagnostics(ac)]
       return acc
