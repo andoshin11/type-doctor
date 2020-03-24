@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "gen:diagMap": "node scripts/genDiagnosticsMap.js"
+    "gen:diagMap": "node scripts/genDiagnosticsMap.js",
+    "test:type": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/clui": "^0.3.0",
