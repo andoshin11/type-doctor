@@ -1,6 +1,6 @@
 export type Symptom = {
   type: 'autoFixable' | 'unFixable' | 'treatable'
-  location: SymptomLocation
+  location?: SymptomLocation
 }
 
 export enum SymptomLocation {

@@ -1,15 +1,24 @@
 import * as ts from 'typescript'
 import { code2symptom } from '../utils'
+import { CodeFixAction } from '../types'
 
 export class Analyzer {
-  analyzeDiagnostics(diagnostics: ts.Diagnostic[]) {
-    diagnostics.forEach(this.analyzeDiagnostic)
+  constructor(private service: ts.LanguageService) {}
+
+  getAutoCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
+    const analyzeDiagnostic = this.analyzeDiagnostic.bind(this)
+    // console.log(diagnostics[0])
+    const result = diagnostics.map(analyzeDiagnostic)
+
+    return []
   }
 
   analyzeDiagnostic(diagnostic: ts.Diagnostic) {
-    console.log(diagnostic.code)
     const symptom = code2symptom(diagnostic.code)
 
-    console.log(symptom)
+    return {
+      diagnostic,
+      symptom
+    }
   }
 }

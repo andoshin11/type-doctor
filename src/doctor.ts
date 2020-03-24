@@ -21,7 +21,7 @@ export class Doctor {
     const host = createHost(fileNames, compilerOptions, this.scriptVersions)
     this.service = createService(host)
     this.reporter = new Reporter()
-    this.analyzer = new Analyzer()
+    this.analyzer = new Analyzer(this.service)
     this.surgeon = new Surgeon(fileNames, this.reporter, this.service)
   }
 
@@ -33,7 +33,6 @@ export class Doctor {
         path.dirname(configPath)
     );
     const rootFileNames = [
-      // ...getTypesDts(parsed.options), <- may cause crash
       ...parsed.fileNames
     ]
     return new Doctor(rootFileNames, parsed.options, debug)
@@ -42,13 +41,15 @@ export class Doctor {
   getSemanticDiagnostics() {
     const { fileNames, service } = this
     const result = fileNames.reduce((acc, ac) => {
+      console.log('L49')
+      console.log(ac)
       acc = [...acc, ...service.getSemanticDiagnostics(ac)]
       return acc
     }, [] as ts.Diagnostic[])
     return result
   }
 
-  getAutoCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
+  getTSNativeCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
     const service = this.service
     const _diagnostics = diagnostics.filter(hasDiagRange)
     const codeFixesList = _diagnostics.map(d => {
@@ -62,6 +63,16 @@ export class Doctor {
     }, [] as readonly ts.CodeFixAction[])
 
     return toCodeFixActions(codeFixes)
+  }
+
+  getAutoCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
+    const tsNativeCodeFixes = this.getTSNativeCodeFixes(diagnostics)
+    const autoCodeFixes = this.analyzer.getAutoCodeFixes(diagnostics)
+
+    return [
+      ...tsNativeCodeFixes,
+      ...autoCodeFixes
+    ]
   }
 
   runDiagnostics() {
