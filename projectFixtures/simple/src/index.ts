@@ -1,10 +1,10 @@
 // import * as https from 'https' <- this import statement will crash the compiler somehow :thinking_face:
 
-function say(input: number) {
+function say(input: 'fuga') {
   console.log(input)
 }
 
-say1('hello')
+// say('hello')
 
 const hoge = 'hoge'
 hoge = 'fuga'
