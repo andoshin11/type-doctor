@@ -5,6 +5,7 @@ import { FileEntry } from '../types'
 
 export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOptions, fileEntry: FileEntry): ts.LanguageServiceHost => {
   const getCurrentVersion = (fileName: string) => fileEntry.has(fileName) ? fileEntry.get(fileName)!.version : 0
+  const getTextFromSnapshot = (snapshot: ts.IScriptSnapshot) => snapshot.getText(0, snapshot.getLength())
 
   const readFile = (fileName: string, encoding: string | undefined = 'utf8') => {
     fileName = path.normalize(fileName);
@@ -24,24 +25,29 @@ export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOpti
     fileExists: fileName => {
       return ts.sys.fileExists(fileName) || readFile(fileName) !== undefined
     },
-    readFile: readFileWithFallback,
+    readFile: fileName => {
+      if (fileEntry.has(fileName)) {
+        const snapshot = fileEntry.get(fileName)!.scriptSnapshot
+        return getTextFromSnapshot(snapshot)
+      }
+      readFileWithFallback
+    },
     realpath: ts.sys.realpath,
     directoryExists: ts.sys.directoryExists,
     getCurrentDirectory: ts.sys.getCurrentDirectory,
     getDirectories: ts.sys.getDirectories
   }
 
-  return {
+  const host: ts.LanguageServiceHost = {
     getScriptFileNames: () => fileNames,
     getScriptVersion: fileName => getCurrentVersion(fileName) + '',
     getScriptSnapshot: fileName => {
-      if (!fs.existsSync(fileName)) {
-        return undefined
-      }
-
       if (fileEntry.has(fileName)) {
         return fileEntry.get(fileName)!.scriptSnapshot
       } else {
+        if (!fs.existsSync(fileName)) {
+          return undefined
+        }
         const content = fs.readFileSync(fileName).toString()
         const scriptSnapshot = ts.ScriptSnapshot.fromString(content)
         fileEntry.set(fileName, { version: 0, scriptSnapshot })
@@ -51,27 +57,22 @@ export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOpti
     getCurrentDirectory: () => process.cwd(),
     getCompilationSettings: () => compilerOptions,
     getDefaultLibFileName: options => ts.getDefaultLibFilePath(options),
-    resolveModuleNames: (moduleNames, containingFile) => {
-      const resolutionHost = { fileExists: ts.sys.fileExists, readFile: ts.sys.readFile };
-      const ret = [] as ts.ResolvedModule[];
-      moduleNames.forEach(name => {
+    resolveModuleNames: (moduleNames, containingFile, _, __, options) => {
+      const ret: (ts.ResolvedModule | undefined)[] = moduleNames.map(name => {
           if (/\.vue$/.test(name)) {
-            const resolved = {
-              resolvedFileName: normalize(path.resolve(path.dirname(containingFile), name)),
-              extension: ts.Extension.Ts
+            const resolved: ts.ResolvedModule = {
+              resolvedFileName: normalize(path.resolve(path.dirname(containingFile), name))
             }
-            ret.push(resolved)
+            return resolved
           }
 
-          const resolved = ts.resolveModuleName(
+          const { resolvedModule } = ts.resolveModuleName(
               name,
               containingFile,
-              compilerOptions,
-              resolutionHost
-          ).resolvedModule;
-          if (resolved !== undefined) {
-              ret.push(resolved);
-          }
+              options,
+              moduleResolutionHost
+          );
+          return resolvedModule
       });
       return ret;
     },
@@ -81,6 +82,8 @@ export const createHost = (fileNames: string[], compilerOptions: ts.CompilerOpti
     getDirectories: ts.sys.getDirectories,
     realpath: moduleResolutionHost.realpath
   }
+
+  return host
 }
 
 // .ts suffix is needed since the compiler skips compile
