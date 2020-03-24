@@ -40,13 +40,17 @@ export class Doctor {
 
   getSemanticDiagnostics() {
     const { fileNames, service } = this
-    const result = fileNames.reduce((acc, ac) => {
-      console.log('L49')
-      console.log(ac)
-      acc = [...acc, ...service.getSemanticDiagnostics(ac)]
-      return acc
-    }, [] as ts.Diagnostic[])
-    return result
+    const result = service.getProgram()!.getSemanticDiagnostics()
+    // console.log(result)
+    return [...result]
+    // const result = fileNames.reduce((acc, ac) => {
+    //   console.log('L49')
+    //   console.log(ac)
+    //   acc = [...acc, ...service.getSemanticDiagnostics(ac)]
+    //   return acc
+    // }, [] as ts.Diagnostic[])
+    // return result
+    return []
   }
 
   getTSNativeCodeFixes(diagnostics: ts.Diagnostic[]): CodeFixAction[] {
